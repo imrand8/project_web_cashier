@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiSearch, FiBell, FiAlertTriangle, FiInfo } from 'react-icons/fi';
 import logoSimbara from '../assets/logo.png';
 
@@ -83,6 +83,24 @@ const TopBar = ({ searchMenu, setSearchMenu, setActiveTab }) => {
   // Perhitungan notifikasi penting (Warning & Danger)
   const unreadCount = notifications.filter(n => n.type === 'danger' || n.type === 'warning').length;
 
+  const notifRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        notifRef.current && 
+        !notifRef.current.contains(event.target) &&
+        buttonRef.current && 
+        !buttonRef.current.contains(event.target)
+      ) {
+        setShowNotif(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <div className="h-24 bg-white flex items-center justify-between px-8 border-b border-gray-200 z-20 shadow-sm w-full">
 
@@ -128,7 +146,8 @@ const TopBar = ({ searchMenu, setSearchMenu, setActiveTab }) => {
         {/* POP-UP NOTIFIKASI DENGAN BADGE */}
         <div className="relative">
           <button 
-            onClick={() => setShowNotif(!showNotif)}
+            ref={buttonRef} // <-- 1. Pasang ref di tombol lonceng
+            onClick={() => setShowNotif((prev) => !prev)}
             className="relative p-2 text-gray-500 hover:text-[#F3AB33] transition-colors"
           >
             <FiBell className="text-2xl" />
@@ -140,52 +159,61 @@ const TopBar = ({ searchMenu, setSearchMenu, setActiveTab }) => {
           </button>
 
           {showNotif && (
-            <div className="absolute right-0 mt-4 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50 animate-fade-in">
-              <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
-                <h3 className="text-sm font-extrabold text-gray-800">
-                  Notifikasi
-                </h3>
-                <span className="text-[10px] bg-amber-50 text-[#F3AB33] font-bold px-2 py-0.5 rounded-full">
-                  {notifications.length} Pesan
-                </span>
-              </div>
+            <>
+              {/* 1. Backdrop transparan menutupi seluruh layar browser */}
+              <div 
+                className="fixed inset-0 z-30 bg-transparent" 
+                onClick={() => setShowNotif(false)}
+              />
 
-              <div className="max-h-72 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
-                {notifications.length === 0 ? (
-                  <div className="text-center py-6">
-                    <p className="text-xs text-gray-500">Tidak ada notifikasi baru.</p>
-                  </div>
-                ) : (
-                  notifications.map((item) => (
-                    <div 
-                      key={item.id} 
-                      className={`p-3 rounded-xl border text-left transition-all ${
-                        item.type === 'danger' 
-                          ? 'bg-red-50/60 border-red-100' 
-                          : item.type === 'warning' 
-                          ? 'bg-amber-50/60 border-amber-100' 
-                          : 'bg-gray-50 border-gray-100'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <div className="mt-0.5">
-                          {item.type === 'danger' && <FiAlertTriangle className="text-red-500 text-base" />}
-                          {item.type === 'warning' && <FiAlertTriangle className="text-amber-500 text-base" />}
-                          {item.type === 'info' && <FiInfo className="text-blue-500 text-base" />}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-xs font-bold text-gray-800">{item.title}</h4>
-                            <span className="text-[9px] text-gray-400 font-medium">{item.time}</span>
+              {/* 2. Kotak Pop-up Notifikasi (diberi z-40 agar berada di atas backdrop) */}
+              <div ref={notifRef} className="absolute right-0 mt-4 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-40 animate-fade-in">
+                <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+                  <h3 className="text-sm font-extrabold text-gray-800">
+                    Notifikasi
+                  </h3>
+                  <span className="text-[10px] bg-amber-50 text-[#F3AB33] font-bold px-2 py-0.5 rounded-full">
+                    {notifications.length} Pesan
+                  </span>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                  {notifications.length === 0 ? (
+                    <div className="text-center py-6">
+                      <p className="text-xs text-gray-500">Tidak ada notifikasi baru.</p>
+                    </div>
+                  ) : (
+                    notifications.map((item) => (
+                      <div 
+                        key={item.id} 
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          item.type === 'danger' 
+                            ? 'bg-red-50/60 border-red-100' 
+                            : item.type === 'warning' 
+                            ? 'bg-amber-50/60 border-amber-100' 
+                            : 'bg-gray-50 border-gray-100'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="mt-0.5">
+                            {item.type === 'danger' && <FiAlertTriangle className="text-red-500 text-base" />}
+                            {item.type === 'warning' && <FiAlertTriangle className="text-amber-500 text-base" />}
+                            {item.type === 'info' && <FiInfo className="text-blue-500 text-base" />}
                           </div>
-                          <p className="text-[11px] text-gray-600 mt-0.5 leading-snug">{item.message}</p>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold text-gray-800">{item.title}</h4>
+                              <span className="text-[9px] text-gray-400 font-medium">{item.time}</span>
+                            </div>
+                            <p className="text-[11px] text-gray-600 mt-0.5 leading-snug">{item.message}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 

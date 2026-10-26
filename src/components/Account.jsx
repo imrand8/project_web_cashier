@@ -3,9 +3,6 @@ import { FiLock, FiLogOut, FiClock, FiCheckCircle } from 'react-icons/fi';
 import Swal from 'sweetalert2';
 
 const Account = ({ onLogout, user }) => {
-  // Dapatkan inisial nama untuk avatar (maksimal 2 huruf pertama)
-  const initials = user?.name ? user.name.substring(0, 2).toUpperCase() : 'US';
-  
   // Format tampilan role
   const displayRole = user?.role === 'admin' ? 'Super Admin' : 'Kasir';
 
@@ -72,8 +69,7 @@ const Account = ({ onLogout, user }) => {
   };
 
   // Fungsi Ubah Kata Sandi
-const handleChangePassword = () => {
-    // String SVG persis Ikon FiEye dan FiEyeOff dari react-icons/fi
+  const handleChangePassword = () => {
     const eyeIcon = `<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" xmlns="http://www.w3.org/2000/svg"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
     const eyeOffIcon = `<svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" xmlns="http://www.w3.org/2000/svg"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
 
@@ -84,45 +80,22 @@ const handleChangePassword = () => {
           <div>
             <label class="text-xs font-bold text-gray-600 block mb-1">Kata Sandi Lama</label>
             <div class="relative flex items-center">
-              <input 
-                type="password" 
-                id="oldPassword" 
-                class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-800 rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:border-[#F3AB33] focus:ring-1 focus:ring-[#F3AB33] transition-all" 
-                placeholder="Masukkan kata sandi lama"
-              />
-              <button type="button" class="toggle-pwd absolute right-3 text-gray-400 hover:text-gray-600 transition-colors" data-target="oldPassword">
-                ${eyeIcon}
-              </button>
+              <input type="password" id="oldPassword" class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-800 rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:border-[#F3AB33] focus:ring-1 focus:ring-[#F3AB33] transition-all" placeholder="Masukkan kata sandi lama" />
+              <button type="button" class="toggle-pwd absolute right-3 text-gray-400 hover:text-gray-600 transition-colors" data-target="oldPassword">${eyeIcon}</button>
             </div>
           </div>
-
           <div>
             <label class="text-xs font-bold text-gray-600 block mb-1">Kata Sandi Baru</label>
             <div class="relative flex items-center">
-              <input 
-                type="password" 
-                id="newPassword" 
-                class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-800 rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:border-[#F3AB33] focus:ring-1 focus:ring-[#F3AB33] transition-all" 
-                placeholder="Masukkan kata sandi baru"
-              />
-              <button type="button" class="toggle-pwd absolute right-3 text-gray-400 hover:text-gray-600 transition-colors" data-target="newPassword">
-                ${eyeIcon}
-              </button>
+              <input type="password" id="newPassword" class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-800 rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:border-[#F3AB33] focus:ring-1 focus:ring-[#F3AB33] transition-all" placeholder="Masukkan kata sandi baru" />
+              <button type="button" class="toggle-pwd absolute right-3 text-gray-400 hover:text-gray-600 transition-colors" data-target="newPassword">${eyeIcon}</button>
             </div>
           </div>
-
           <div>
             <label class="text-xs font-bold text-gray-600 block mb-1">Konfirmasi Kata Sandi Baru</label>
             <div class="relative flex items-center">
-              <input 
-                type="password" 
-                id="confirmPassword" 
-                class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-800 rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:border-[#F3AB33] focus:ring-1 focus:ring-[#F3AB33] transition-all" 
-                placeholder="Ulangi kata sandi baru"
-              />
-              <button type="button" class="toggle-pwd absolute right-3 text-gray-400 hover:text-gray-600 transition-colors" data-target="confirmPassword">
-                ${eyeIcon}
-              </button>
+              <input type="password" id="confirmPassword" class="w-full bg-gray-50 border border-gray-200 text-sm text-gray-800 rounded-xl pl-3.5 pr-10 py-2.5 focus:outline-none focus:border-[#F3AB33] focus:ring-1 focus:ring-[#F3AB33] transition-all" placeholder="Ulangi kata sandi baru" />
+              <button type="button" class="toggle-pwd absolute right-3 text-gray-400 hover:text-gray-600 transition-colors" data-target="confirmPassword">${eyeIcon}</button>
             </div>
           </div>
         </div>
@@ -197,14 +170,17 @@ const handleChangePassword = () => {
         <p className="text-xs text-gray-500 mt-1">Kelola profil pengguna dan preferensi sistem Anda.</p>
       </div>
 
-          {/* WRAPPER UTAMA (Diberi max-w-4xl & items-start agar proporsional) */}
       <div className="flex flex-col lg:flex-row gap-6 items-start max-w-4xl">
 
-        {/* KARTU PROFIL UTAMA (Lebar Tetap) */}
+        {/* KARTU PROFIL UTAMA (Menggunakan Avatar yang Seragam dengan TopBar) */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm w-full lg:w-80 shrink-0">
           <div className="flex flex-col items-center text-center">
-            <div className="w-24 h-24 rounded-full bg-[#F3AB33] flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-[#F3AB33]/30 mb-4 tracking-widest">
-              {initials}
+            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[#F3AB33] shadow-lg shadow-[#F3AB33]/30 mb-4 bg-gray-100">
+              <img 
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Kasir')}&background=F3AB33&color=fff&size=128`} 
+                alt="Profile" 
+                className="w-full h-full object-cover"
+              />
             </div>
             <h2 className="text-xl font-extrabold text-gray-800">{user?.name || 'Nama Pengguna'}</h2>
             <p className="text-sm text-gray-500 font-medium mb-1">{displayRole}</p>
@@ -229,7 +205,7 @@ const handleChangePassword = () => {
           </div>
         </div>
 
-        {/* MENU KANAN: ABSENSI & UBAH SANDI (Max Lebar Pas/Proporsional) */}
+        {/* MENU KANAN: ABSENSI & UBAH SANDI */}
         <div className="flex-1 w-full max-w-md flex flex-col gap-4">
 
           {/* KARTU ABSENSI HARI INI */}

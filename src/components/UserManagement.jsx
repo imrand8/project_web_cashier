@@ -26,7 +26,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('${import.meta.env.VITE_API_URL}/users');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users`);
       const data = await response.json();
       setUsers(data);
     } catch (error) {
@@ -41,7 +41,7 @@ const UserManagement = () => {
   // Ambil Data Rekap Absensi
   const fetchAttendances = async () => {
     try {
-      const response = await fetch('${import.meta.env.VITE_API_URL}/attendance/report');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/attendance/report`);
       const data = await response.json();
       setAttendances(data);
     } catch (error) {
@@ -105,7 +105,7 @@ const UserManagement = () => {
 
     const url = editingUser 
       ? `${import.meta.env.VITE_API_URL}/users/${editingUser.id}` 
-      : '${import.meta.env.VITE_API_URL}/users';
+      : `${import.meta.env.VITE_API_URL}/users`;
     
     const method = editingUser ? 'PUT' : 'POST';
 

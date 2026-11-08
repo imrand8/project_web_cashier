@@ -30,7 +30,7 @@ const Account = ({ onLogout, user }) => {
   const handleClockIn = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('${import.meta.env.VITE_API_URL}/attendance/clock-in', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/attendance/clock-in`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
@@ -51,7 +51,7 @@ const Account = ({ onLogout, user }) => {
   const handleClockOut = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('${import.meta.env.VITE_API_URL}/attendance/clock-out', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/attendance/clock-out`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),

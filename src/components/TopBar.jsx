@@ -23,7 +23,7 @@ const TopBar = ({ searchMenu, setSearchMenu, setActiveTab }) => {
   // Ambil data produk untuk notifikasi stok otomatis (Real-Time Polling)
   useEffect(() => {
     const checkStockAndNotifications = () => {
-      fetch('${import.meta.env.VITE_API_URL}/products')
+      fetch(`${import.meta.env.VITE_API_URL}/products`)
         .then((res) => res.json())
         .then((products) => {
           const newNotifs = [];

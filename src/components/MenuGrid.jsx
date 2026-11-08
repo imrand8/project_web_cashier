@@ -24,7 +24,7 @@ const MenuGrid = ({ searchMenu, cartItems, setCartItems }) => {
 
 // Ambil produk dari backend saat komponen dimuat
 useEffect(() => {
-  fetch('${import.meta.env.VITE_API_URL}/products')
+  fetch(`${import.meta.env.VITE_API_URL}/products`)
     .then(res => res.json())
     .then(data => setProducts(data))
     .catch(err => console.error('Gagal memuat produk:', err));

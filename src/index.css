@@ -4,5 +4,7 @@
 
 @font-face {
   font-family: 'JawaPalsu';
-  src: url('./assets/fonts/JAWAPALSU.ttf') format('truetype');
+  src: url('/fonts/JAWAPALSU.TTF') format('truetype');
+  font-weight: normal;
+  font-style: normal;
 }

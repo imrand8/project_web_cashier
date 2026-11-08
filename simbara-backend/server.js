@@ -452,5 +452,9 @@ if (process.env.NODE_ENV !== 'production') {
     });
 }
 
+app.get('/', (req, res) => {
+  res.json({ message: 'API Simbara Cashier Berjalan Normal!' });
+});
+
 // PENTING: Ekspor app agar Vercel bisa membacanya
 module.exports = app;

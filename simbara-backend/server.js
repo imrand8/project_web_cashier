@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const {Pool} = require('pg');
+const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -9,33 +9,32 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Kunci rahasia untuk Token JWT (bebas, nanti disembunyikan di .env)
 const JWT_SECRET = 'simbara_secret_key_2026';
 
-// 1. // Konfigurasi Koneksi Supabase (PostgreSQL)
+// Konfigurasi Koneksi Supabase (PostgreSQL)
 const db = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // Diperlukan untuk koneksi cloud Supabase
+    rejectUnauthorized: false
   }
 });
 
 db.connect((err) => {
   if (err) {
-    console.error('Koneksi ke MySQL Gagal:', err);
+    console.error('Koneksi ke Supabase Gagal:', err);
     return;
   }
-  console.log('✅ Berhasil Terhubung ke Database MySQL: web_cashier_db');
+  console.log('✅ Berhasil Terhubung ke Database Supabase PostgreSQL');
 });
 
-// 2. ENDPOINT: REGISTER ADMIN PERTAMA (Opsional, untuk inisialisasi awal)
+// 2. ENDPOINT: REGISTER ADMIN PERTAMA
 app.post('/api/register-admin', async (req, res) => {
   const { name, username, password } = req.body;
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const query = 'INSERT INTO users (name, username, password, role) VALUES (?, ?, ?, "admin")';
+    const query = 'INSERT INTO users (name, username, password, role) VALUES ($1, $2, $3, $4)';
     
-    db.query(query, [name, username, hashedPassword], (err, result) => {
+    db.query(query, [name || 'Super Admin', username, hashedPassword, 'admin'], (err, result) => {
       if (err) {
         return res.status(400).json({ error: 'Username sudah digunakan atau data tidak valid!' });
       }
@@ -50,23 +49,24 @@ app.post('/api/register-admin', async (req, res) => {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
 
-  const query = 'SELECT * FROM users WHERE username = ?';
+  const query = 'SELECT * FROM users WHERE username = $1';
   db.query(query, [username], async (err, results) => {
-    if (err) return res.status(500).json({ error: 'Kesalahan pada database' });
+    if (err) {
+      console.error('Login error:', err);
+      return res.status(500).json({ error: 'Kesalahan pada database' });
+    }
 
-    if (results.length === 0) {
+    if (results.rows.length === 0) {
       return res.status(401).json({ error: 'Username atau password salah!' });
     }
 
-    const user = results.results ? results[0] : results[0]; // Ambil data user pertama
+    const user = results.rows[0];
 
-    // Cek kecocokan password dengan yang di-hash
     const isPasswordValid = (password === user.password) || await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Username atau password salah!' });
     }
 
-    // Buat Token JWT (berlaku 1 hari)
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
       JWT_SECRET,
@@ -88,16 +88,14 @@ app.post('/api/login', (req, res) => {
 
 // ==================== FITUR MANAJEMEN USER ====================
 
-// 1. Ambil Semua User
 app.get('/api/users', (req, res) => {
   const query = 'SELECT id, name, username, role, created_at FROM users ORDER BY id DESC';
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: 'Gagal mengambil data user' });
-    res.json(results);
+    res.json(results.rows);
   });
 });
 
-// 2. TAMBAH USER (Dengan Validasi Password Min 8 Karakter)
 app.post('/api/users', async (req, res) => {
   const { name, username, password, role } = req.body;
 
@@ -111,11 +109,11 @@ app.post('/api/users', async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const query = 'INSERT INTO users (name, username, password, role) VALUES (?, ?, ?, ?)';
+    const query = 'INSERT INTO users (name, username, password, role) VALUES ($1, $2, $3, $4)';
     
     db.query(query, [name, username, hashedPassword, role || 'kasir'], (err, result) => {
       if (err) {
-        if (err.code === 'ER_DUP_ENTRY') {
+        if (err.code === '23505') { // Postgres unique violation code
           return res.status(400).json({ error: 'Username sudah digunakan!' });
         }
         return res.status(500).json({ error: 'Gagal menambah user' });
@@ -127,7 +125,6 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// 3. EDIT USER (Password Opsional, Min 8 Karakter Jika Diisi)
 app.put('/api/users/:id', async (req, res) => {
   const { id } = req.params;
   const { name, username, password, role } = req.body;
@@ -137,21 +134,19 @@ app.put('/api/users/:id', async (req, res) => {
   }
 
   try {
-    // Jika password diisi (artinya admin ingin mengubah password user)
     if (password && password.trim() !== '') {
       if (password.length < 8) {
         return res.status(400).json({ error: 'Password baru minimal harus 8 karakter!' });
       }
       const hashedPassword = await bcrypt.hash(password, 10);
-      const query = 'UPDATE users SET name = ?, username = ?, password = ?, role = ? WHERE id = ?';
+      const query = 'UPDATE users SET name = $1, username = $2, password = $3, role = $4 WHERE id = $5';
       
       db.query(query, [name, username, hashedPassword, role, id], (err, result) => {
         if (err) return res.status(500).json({ error: 'Gagal mengupdate user / Username sudah digunakan' });
         res.json({ message: 'User & Password berhasil diupdate!' });
       });
     } else {
-      // Jika password dikosongkan (hanya ubah nama/username/role)
-      const query = 'UPDATE users SET name = ?, username = ?, role = ? WHERE id = ?';
+      const query = 'UPDATE users SET name = $1, username = $2, role = $3 WHERE id = $4';
       db.query(query, [name, username, role, id], (err, result) => {
         if (err) return res.status(500).json({ error: 'Gagal mengupdate user / Username sudah digunakan' });
         res.json({ message: 'Data user berhasil diupdate!' });
@@ -162,10 +157,9 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
-// 4. Hapus User
 app.delete('/api/users/:id', (req, res) => {
   const { id } = req.params;
-  const query = 'DELETE FROM users WHERE id = ?';
+  const query = 'DELETE FROM users WHERE id = $1';
 
   db.query(query, [id], (err, result) => {
     if (err) return res.status(500).json({ error: 'Gagal menghapus user' });
@@ -173,7 +167,6 @@ app.delete('/api/users/:id', (req, res) => {
   });
 });
 
-// 5. Ubah Kata Sandi Akun
 app.put('/api/users/:id/change-password', async (req, res) => {
   const { id } = req.params;
   const { oldPassword, newPassword } = req.body;
@@ -186,24 +179,21 @@ app.put('/api/users/:id/change-password', async (req, res) => {
     return res.status(400).json({ error: 'Kata sandi baru minimal harus 8 karakter!' });
   }
 
-  // 1. Cari user di database
-  const querySelect = 'SELECT * FROM users WHERE id = ?';
+  const querySelect = 'SELECT * FROM users WHERE id = $1';
   db.query(querySelect, [id], async (err, results) => {
     if (err) return res.status(500).json({ error: 'Kesalahan pada database' });
-    if (results.length === 0) return res.status(404).json({ error: 'Pengguna tidak ditemukan' });
+    if (results.rows.length === 0) return res.status(404).json({ error: 'Pengguna tidak ditemukan' });
 
-    const user = results[0];
+    const user = results.rows[0];
 
-    // 2. Verifikasi kata sandi lama
     const isOldPasswordValid = (oldPassword === user.password) || await bcrypt.compare(oldPassword, user.password);
     if (!isOldPasswordValid) {
       return res.status(400).json({ error: 'Kata sandi lama salah!' });
     }
 
     try {
-      // 3. Hash kata sandi baru & update ke database
       const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-      const queryUpdate = 'UPDATE users SET password = ? WHERE id = ?';
+      const queryUpdate = 'UPDATE users SET password = $1 WHERE id = $2';
 
       db.query(queryUpdate, [hashedNewPassword, id], (err, result) => {
         if (err) return res.status(500).json({ error: 'Gagal memperbarui kata sandi' });
@@ -215,18 +205,16 @@ app.put('/api/users/:id/change-password', async (req, res) => {
   });
 });
 
-// ==================== FITUR MANAJEMEN PRODUK (STOK & MENU) ====================
+// ==================== FITUR MANAJEMEN PRODUK ====================
 
-// 1. Ambil Semua Produk
 app.get('/api/products', (req, res) => {
   const query = 'SELECT * FROM products ORDER BY id DESC';
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: 'Gagal mengambil data produk' });
-    res.json(results);
+    res.json(results.rows);
   });
 });
 
-// 2. Tambah Produk Baru (Hanya Admin)
 app.post('/api/products', (req, res) => {
   const { name, category, price, stock, image } = req.body;
   
@@ -234,29 +222,27 @@ app.post('/api/products', (req, res) => {
     return res.status(400).json({ error: 'Nama, Kategori, Harga, dan Stok wajib diisi!' });
   }
 
-  const query = 'INSERT INTO products (name, category, price, stock, image) VALUES (?, ?, ?, ?, ?)';
+  const query = 'INSERT INTO products (name, category, price, stock, image) VALUES ($1, $2, $3, $4, $5) RETURNING id';
   db.query(query, [name, category, price, stock, image || ''], (err, result) => {
     if (err) return res.status(500).json({ error: 'Gagal menambah produk' });
-    res.json({ message: 'Produk berhasil ditambahkan!', id: result.insertId });
+    res.json({ message: 'Produk berhasil ditambahkan!', id: result.rows[0].id });
   });
 });
 
-// 3. Edit Produk (Hanya Admin)
 app.put('/api/products/:id', (req, res) => {
   const { id } = req.params;
   const { name, category, price, stock, image } = req.body;
 
-  const query = 'UPDATE products SET name = ?, category = ?, price = ?, stock = ?, image = ? WHERE id = ?';
+  const query = 'UPDATE products SET name = $1, category = $2, price = $3, stock = $4, image = $5 WHERE id = $6';
   db.query(query, [name, category, price, stock, image || '', id], (err, result) => {
     if (err) return res.status(500).json({ error: 'Gagal mengupdate produk' });
     res.json({ message: 'Produk berhasil diupdate!' });
   });
 });
 
-// 4. Hapus Produk (Hanya Admin)
 app.delete('/api/products/:id', (req, res) => {
   const { id } = req.params;
-  const query = 'DELETE FROM products WHERE id = ?';
+  const query = 'DELETE FROM products WHERE id = $1';
 
   db.query(query, [id], (err, result) => {
     if (err) return res.status(500).json({ error: 'Gagal menghapus produk' });
@@ -266,31 +252,28 @@ app.delete('/api/products/:id', (req, res) => {
 
 // ==================== FITUR ABSENSI ====================
 
-// 1. Cek Status Absen Hari Ini (Kasir)
 app.get('/api/attendance/status/:userId', (req, res) => {
   const { userId } = req.params;
   const today = new Date().toISOString().split('T')[0];
 
-  const query = 'SELECT * FROM attendances WHERE user_id = ? AND date = ?';
+  const query = 'SELECT * FROM attendances WHERE user_id = $1 AND date = $2';
   db.query(query, [userId, today], (err, results) => {
     if (err) return res.status(500).json({ error: 'Gagal mengecek status absensi' });
-    res.json(results[0] || null);
+    res.json(results.rows[0] || null);
   });
 });
 
-// 2. Absen Masuk / Clock-In (Kasir)
 app.post('/api/attendance/clock-in', (req, res) => {
   const { userId } = req.body;
   const today = new Date().toISOString().split('T')[0];
   const currentTime = new Date().toTimeString().split(' ')[0];
 
-  // Cek apakah sudah absen hari ini
-  db.query('SELECT * FROM attendances WHERE user_id = ? AND date = ?', [userId, today], (err, results) => {
-    if (results.length > 0) {
+  db.query('SELECT * FROM attendances WHERE user_id = $1 AND date = $2', [userId, today], (err, results) => {
+    if (results.rows.length > 0) {
       return res.status(400).json({ error: 'Anda sudah melakukan Absen Masuk hari ini!' });
     }
 
-    const query = 'INSERT INTO attendances (user_id, date, clock_in) VALUES (?, ?, ?)';
+    const query = 'INSERT INTO attendances (user_id, date, clock_in) VALUES ($1, $2, $3)';
     db.query(query, [userId, today, currentTime], (err) => {
       if (err) return res.status(500).json({ error: 'Gagal melakukan Absen Masuk' });
       res.json({ message: 'Absen Masuk Berhasil!', clockIn: currentTime });
@@ -298,22 +281,20 @@ app.post('/api/attendance/clock-in', (req, res) => {
   });
 });
 
-// 3. Absen Pulang / Clock-Out (Kasir)
 app.post('/api/attendance/clock-out', (req, res) => {
   const { userId } = req.body;
   const today = new Date().toISOString().split('T')[0];
   const currentTime = new Date().toTimeString().split(' ')[0];
 
-  const query = 'UPDATE attendances SET clock_out = ? WHERE user_id = ? AND date = ?';
+  const query = 'UPDATE attendances SET clock_out = $1 WHERE user_id = $2 AND date = $3';
   db.query(query, [currentTime, userId, today], (err, result) => {
-    if (err || result.affectedRows === 0) {
+    if (err || result.rowCount === 0) {
       return res.status(400).json({ error: 'Gagal Absen Pulang / Belum Absen Masuk' });
     }
     res.json({ message: 'Absen Pulang Berhasil!', clockOut: currentTime });
   });
 });
 
-// 4. Rekap Absensi Semua Kasir (Admin)
 app.get('/api/attendance/report', (req, res) => {
   const query = `
     SELECT a.id, u.name, u.username, a.date, a.clock_in, a.clock_out, a.status 
@@ -323,13 +304,12 @@ app.get('/api/attendance/report', (req, res) => {
   `;
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: 'Gagal mengambil rekap absensi' });
-    res.json(results);
+    res.json(results.rows);
   });
 });
 
-// ==================== FITUR RIWAYAT & LAPORAN PENJUALAN ====================
+// ==================== FITUR TRANSAKSI ====================
 
-// 1. Get Riwayat Pesanan Hari Ini (Untuk Kasir)
 app.get('/api/orders/today', (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
@@ -341,18 +321,18 @@ app.get('/api/orders/today', (req, res) => {
       o.payment_method AS paymentMethod, 
       o.total_amount AS total, 
       o.status, 
-      DATE_FORMAT(o.created_at, '%d %b %Y, %H:%i') AS date,
+      to_char(o.created_at, 'DD Mon YYYY, HH24:MI') AS date,
       u.name AS cashier,
       COALESCE(
-        JSON_ARRAYAGG(
-          JSON_OBJECT('name', oi.product_name, 'qty', oi.qty, 'price', oi.price)
-        ), '[]'
+        json_agg(
+          json_build_object('name', oi.product_name, 'qty', oi.qty, 'price', oi.price)
+        ) FILTER (WHERE oi.id IS NOT NULL), '[]'
       ) AS items
     FROM orders o
     LEFT JOIN users u ON o.user_id = u.id
     LEFT JOIN order_items oi ON o.id = oi.order_id
-    WHERE DATE(o.created_at) = ?
-    GROUP BY o.id
+    WHERE CAST(o.created_at AS DATE) = $1
+    GROUP BY o.id, u.name
     ORDER BY o.created_at DESC
   `;
 
@@ -361,18 +341,10 @@ app.get('/api/orders/today', (req, res) => {
       console.error('Error fetching today orders:', err);
       return res.status(500).json({ error: 'Gagal mengambil riwayat transaksi hari ini' });
     }
-
-    // Format data items dari JSON MySQL
-    const formatted = results.map(row => ({
-      ...row,
-      items: typeof row.items === 'string' ? JSON.parse(row.items) : (row.items || [])
-    }));
-
-    res.json(formatted);
+    res.json(results.rows);
   });
 });
 
-// 2. Get Laporan Penjualan Semua Transaksi / Filter Tanggal (Untuk Admin)
 app.get('/api/orders/report', (req, res) => {
   const { startDate, endDate } = req.query;
 
@@ -383,7 +355,7 @@ app.get('/api/orders/report', (req, res) => {
       o.payment_method AS paymentMethod, 
       o.total_amount AS total, 
       o.status, 
-      DATE_FORMAT(o.created_at, '%d %b %Y, %H:%i') AS date,
+      to_char(o.created_at, 'DD Mon YYYY, HH24:MI') AS date,
       COALESCE(u.name, 'Kasir') AS cashier
     FROM orders o
     LEFT JOIN users u ON o.user_id = u.id
@@ -392,7 +364,7 @@ app.get('/api/orders/report', (req, res) => {
   const params = [];
 
   if (startDate && endDate) {
-    query += ` WHERE DATE(o.created_at) BETWEEN ? AND ?`;
+    query += ` WHERE CAST(o.created_at AS DATE) BETWEEN $1 AND $2`;
     params.push(startDate, endDate);
   }
 
@@ -403,48 +375,41 @@ app.get('/api/orders/report', (req, res) => {
       console.error('Error fetching report:', err);
       return res.status(500).json({ error: 'Gagal mengambil laporan penjualan' });
     }
-    res.json(results);
+    res.json(results.rows);
   });
 });
 
-// POST: Simpan Transaksi Baru & Potong Stok Produk Otomatis
-app.post('/api/orders', (req, res) => {
-  const { user_id, customer_name, order_type, payment_method, total_amount, items } = req.body;
-  
-  const finalCustomerName = (customer_name && customer_name.trim() !== '') ? customer_name : 'Pelanggan Anonim';
-  const orderId = `ORD-${Date.now()}`;
+app.post('/api/orders', async (req, res) => {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const { user_id, customer_name, order_type, payment_method, total_amount, items } = req.body;
+    
+    const finalCustomerName = (customer_name && customer_name.trim() !== '') ? customer_name : 'Pelanggan Anonim';
+    const orderId = `ORD-${Date.now()}`;
 
-  const orderQuery = 'INSERT INTO orders (id, user_id, customer_name, order_type, payment_method, total_amount, status) VALUES (?, ?, ?, ?, ?, ?, "Lunas")';
-  
-  db.query(orderQuery, [orderId, user_id, finalCustomerName, order_type, payment_method, total_amount], (err, orderResult) => {
-    if (err) {
-      console.error('Error di tabel orders:', err);
-      return res.status(500).json({ error: 'Gagal menyimpan pesanan' });
+    const orderQuery = 'INSERT INTO orders (id, user_id, customer_name, order_type, payment_method, total_amount, status) VALUES ($1, $2, $3, $4, $5, $6, $7)';
+    await client.query(orderQuery, [orderId, user_id, finalCustomerName, order_type, payment_method, total_amount, 'Lunas']);
+
+    for (const item of items) {
+      const itemsQuery = 'INSERT INTO order_items (order_id, product_id, product_name, qty, price) VALUES ($1, $2, $3, $4, $5)';
+      await client.query(itemsQuery, [orderId, item.id, item.name, item.qty, item.price]);
+
+      const updateStockQuery = 'UPDATE products SET stock = GREATEST(0, stock - $1) WHERE id = $2';
+      await client.query(updateStockQuery, [item.qty, item.id]);
     }
 
-    const itemsQuery = 'INSERT INTO order_items (order_id, product_id, product_name, qty, price) VALUES ?';
-    const itemsValues = items.map(item => [orderId, item.id, item.name, item.qty, item.price]);
-
-    db.query(itemsQuery, [itemsValues], (err) => {
-      if (err) {
-        console.error('Error di tabel order_items:', err);
-        return res.status(500).json({ error: 'Gagal menyimpan item pesanan' });
-      }
-
-      // KODE TAMBAHAN: Kurangi stok setiap produk di database
-      items.forEach(item => {
-        const updateStockQuery = 'UPDATE products SET stock = GREATEST(0, stock - ?) WHERE id = ?';
-        db.query(updateStockQuery, [item.qty, item.id], (stockErr) => {
-          if (stockErr) console.error(`Gagal mengurangi stok produk ID ${item.id}:`, stockErr);
-        });
-      });
-
-      res.json({ message: 'Transaksi berhasil disimpan!' });
-    });
-  });
+    await client.query('COMMIT');
+    client.release();
+    res.json({ message: 'Transaksi berhasil disimpan!' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    client.release();
+    console.error('Error di tabel orders:', err);
+    res.status(500).json({ error: 'Gagal menyimpan pesanan' });
+  }
 });
 
-// Jalankan secara lokal jika bukan di Vercel (Production)
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
@@ -456,5 +421,4 @@ app.get('/', (req, res) => {
   res.json({ message: 'API Simbara Cashier Berjalan Normal!' });
 });
 
-// PENTING: Ekspor app agar Vercel bisa membacanya
 module.exports = app;

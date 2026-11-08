@@ -21,7 +21,7 @@ const OrderHistory = () => {
   // Ambil Data Transaksi Hari Ini dari Backend
   const fetchTodayHistory = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/orders/today');
+      const response = await fetch('${import.meta.env.VITE_API_URL}/orders/today');
       const data = await response.json();
       setHistory(data);
     } catch (error) {

@@ -12,7 +12,7 @@ import {
 } from 'react-icons/fi';
 
 const CATEGORIES = ['Semua', 'Kopi', 'Non-Kopi', 'Makanan', 'Camilan'];
-const API_URL = 'http://localhost:5000/api/products';
+const API_URL = '${import.meta.env.VITE_API_URL}/products';
 
 const StockMenu = ({ userRole = 'kasir' }) => {
   const [products, setProducts] = useState([]);

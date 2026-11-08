@@ -14,7 +14,7 @@ const Account = ({ onLogout, user }) => {
   const fetchAttendance = async () => {
     if (!user?.id) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/attendance/status/${user.id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/attendance/status/${user.id}`);
       const data = await response.json();
       setAttendance(data);
     } catch (error) {
@@ -30,7 +30,7 @@ const Account = ({ onLogout, user }) => {
   const handleClockIn = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/attendance/clock-in', {
+      const response = await fetch('${import.meta.env.VITE_API_URL}/attendance/clock-in', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
@@ -51,7 +51,7 @@ const Account = ({ onLogout, user }) => {
   const handleClockOut = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/attendance/clock-out', {
+      const response = await fetch('${import.meta.env.VITE_API_URL}/attendance/clock-out', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id }),
@@ -144,7 +144,7 @@ const Account = ({ onLogout, user }) => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const response = await fetch(`http://localhost:5000/api/users/${user.id}/change-password`, {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/users/${user.id}/change-password`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(result.value)

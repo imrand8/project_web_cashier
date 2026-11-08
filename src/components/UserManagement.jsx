@@ -26,7 +26,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users');
+      const response = await fetch('${import.meta.env.VITE_API_URL}/users');
       const data = await response.json();
       setUsers(data);
     } catch (error) {
@@ -41,7 +41,7 @@ const UserManagement = () => {
   // Ambil Data Rekap Absensi
   const fetchAttendances = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/attendance/report');
+      const response = await fetch('${import.meta.env.VITE_API_URL}/attendance/report');
       const data = await response.json();
       setAttendances(data);
     } catch (error) {
@@ -104,8 +104,8 @@ const UserManagement = () => {
     setIsLoading(true);
 
     const url = editingUser 
-      ? `http://localhost:5000/api/users/${editingUser.id}` 
-      : 'http://localhost:5000/api/users';
+      ? `${import.meta.env.VITE_API_URL}/users/${editingUser.id}` 
+      : '${import.meta.env.VITE_API_URL}/users';
     
     const method = editingUser ? 'PUT' : 'POST';
 
@@ -141,7 +141,7 @@ const UserManagement = () => {
   // Eksekusi Hapus User
   const executeDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${deleteModal.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/users/${deleteModal.id}`, {
         method: 'DELETE',
       });
 

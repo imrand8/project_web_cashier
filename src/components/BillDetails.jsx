@@ -14,7 +14,7 @@ const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false); // Modal St
 const user = JSON.parse(localStorage.getItem('simbara_user')); // Ambil data kasir yg login
 
 useEffect(() => {
-  fetch('http://localhost:5000/api/products')
+  fetch('${import.meta.env.VITE_API_URL}/products')
     .then(res => res.json())
     .then(data => setProducts(data));
 }, []);
@@ -81,7 +81,7 @@ const cartArray = Object.keys(cartItems).map(id => {
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/orders', {
+      const response = await fetch('${import.meta.env.VITE_API_URL}/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)

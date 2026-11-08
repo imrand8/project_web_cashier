@@ -18,7 +18,7 @@ const SalesReport = () => {
   // Ambil Data Laporan Penjualan dari Backend
   const fetchSalesReport = async () => {
     try {
-      let url = 'http://localhost:5000/api/orders/report';
+      let url = '${import.meta.env.VITE_API_URL}/orders/report';
       if (startDate && endDate) {
         url += `?startDate=${startDate}&endDate=${endDate}`;
       }

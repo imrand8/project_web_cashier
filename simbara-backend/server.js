@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2');
+const {Pool} = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -12,12 +12,12 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Kunci rahasia untuk Token JWT (bebas, nanti disembunyikan di .env)
 const JWT_SECRET = 'simbara_secret_key_2026';
 
-// 1. Konfigurasi Koneksi Database
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'web_cashier_db'
+// 1. // Konfigurasi Koneksi Supabase (PostgreSQL)
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Diperlukan untuk koneksi cloud Supabase
+  }
 });
 
 db.connect((err) => {
@@ -444,7 +444,13 @@ app.post('/api/orders', (req, res) => {
   });
 });
 
-const PORT = 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server Backend berjalan di http://localhost:${PORT}`);
-});
+// Jalankan secara lokal jika bukan di Vercel (Production)
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+        console.log(`🚀 Server Backend berjalan di http://localhost:${PORT}`);
+    });
+}
+
+// PENTING: Ekspor app agar Vercel bisa membacanya
+module.exports = app;

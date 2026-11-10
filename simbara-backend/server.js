@@ -91,8 +91,11 @@ app.post('/api/login', (req, res) => {
 app.get('/api/users', (req, res) => {
   const query = 'SELECT id, name, username, role, created_at FROM users ORDER BY id DESC';
   db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ error: 'Gagal mengambil data user' });
-    res.json(results.rows);
+    if (err) {
+      console.error('Error fetching users:', err);
+      return res.status(500).json([]); // Kirim array kosong agar frontend tidak crash
+    }
+    res.json(results.rows || []);
   });
 });
 
@@ -306,8 +309,11 @@ app.get('/api/attendance/report', (req, res) => {
     ORDER BY a.date DESC, a.clock_in DESC
   `;
   db.query(query, (err, results) => {
-    if (err) return res.status(500).json({ error: 'Gagal mengambil rekap absensi' });
-    res.json(results.rows);
+    if (err) {
+      console.error('Error fetching attendance report:', err);
+      return res.status(500).json([]); // Kirim array kosong agar frontend tidak crash
+    }
+    res.json(results.rows || []);
   });
 });
 

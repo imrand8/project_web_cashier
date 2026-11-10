@@ -269,12 +269,22 @@ app.get('/api/attendance/status/:userId', (req, res) => {
   });
 });
 
+const getWIBDateTime = () => {
+  const d = new Date(Date.now() + 7 * 60 * 60 * 1000);
+  const today = d.toISOString().split('T')[0];
+  const currentTime = d.toISOString().split('T')[1].split('.')[0];
+  return { today, currentTime };
+};
+
 app.post('/api/attendance/clock-in', (req, res) => {
   const { userId } = req.body;
-  const today = new Date().toISOString().split('T')[0];
-  const currentTime = new Date().toTimeString().split(' ')[0];
+  if (!userId) return res.status(400).json({ error: 'User ID diperlukan!' });
+
+  const { today, currentTime } = getWIBDateTime();
 
   db.query('SELECT * FROM attendances WHERE user_id = $1 AND date = $2', [userId, today], (err, results) => {
+    if (err) return res.status(500).json({ error: 'Kesalahan pada database' });
+    
     if (results.rows.length > 0) {
       return res.status(400).json({ error: 'Anda sudah melakukan Absen Masuk hari ini!' });
     }
@@ -289,12 +299,15 @@ app.post('/api/attendance/clock-in', (req, res) => {
 
 app.post('/api/attendance/clock-out', (req, res) => {
   const { userId } = req.body;
-  const today = new Date().toISOString().split('T')[0];
-  const currentTime = new Date().toTimeString().split(' ')[0];
+  if (!userId) return res.status(400).json({ error: 'User ID diperlukan!' });
+
+  const { today, currentTime } = getWIBDateTime();
 
   const query = 'UPDATE attendances SET clock_out = $1 WHERE user_id = $2 AND date = $3';
   db.query(query, [currentTime, userId, today], (err, result) => {
-    if (err || result.rowCount === 0) {
+    if (err) return res.status(500).json({ error: 'Kesalahan pada database' });
+    
+    if (result.rowCount === 0) {
       return res.status(400).json({ error: 'Gagal Absen Pulang / Belum Absen Masuk' });
     }
     res.json({ message: 'Absen Pulang Berhasil!', clockOut: currentTime });

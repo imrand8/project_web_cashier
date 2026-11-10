@@ -411,11 +411,12 @@ app.post('/api/orders', async (req, res) => {
     await client.query('COMMIT');
     client.release();
     res.json({ message: 'Transaksi berhasil disimpan!' });
-  } catch (err) {
+} catch (err) {
     await client.query('ROLLBACK');
     client.release();
     console.error('Error di tabel orders:', err);
-    res.status(500).json({ error: 'Gagal menyimpan pesanan' });
+    // Tampilkan pesan error asli dari database ke response
+    res.status(500).json({ error: 'Gagal menyimpan pesanan: ' + err.message });
   }
 });
 

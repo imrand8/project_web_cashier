@@ -348,42 +348,41 @@ app.get('/api/orders/today', (req, res) => {
   db.query(query, [today], (err, results) => {
     if (err) {
       console.error('Error fetching today orders:', err);
-      return res.status(500).json({ error: 'Gagal mengambil riwayat transaksi hari ini' });
+      return res.status(500).json([]); // Aman: mengembalikan array kosong
     }
-    res.json(results.rows);
+    res.json(results.rows || []);
   });
 });
 
-app.get('/api/orders/today', (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
+app.get('/api/orders/report', (req, res) => {
+  const { startDate, endDate } = req.query;
 
-  const query = `
+  let query = `
     SELECT 
       o.id, 
       o.customer_name AS customer, 
-      o.order_type AS type, 
       o.payment_method AS paymentMethod, 
       o.total_amount AS total, 
       o.status, 
       to_char(o.created_at, 'DD Mon YYYY, HH24:MI') AS date,
-      u.name AS cashier,
-      COALESCE(
-        json_agg(
-          json_build_object('name', oi.product_name, 'qty', oi.qty, 'price', oi.price)
-        ) FILTER (WHERE oi.id IS NOT NULL), '[]'
-      ) AS items
+      COALESCE(u.name, 'Kasir') AS cashier
     FROM orders o
     LEFT JOIN users u ON o.user_id = u.id
-    LEFT JOIN order_items oi ON o.id = oi.order_id
-    WHERE CAST(o.created_at AS DATE) = $1
-    GROUP BY o.id, u.name
-    ORDER BY o.created_at DESC
   `;
 
-  db.query(query, [today], (err, results) => {
+  const params = [];
+
+  if (startDate && endDate) {
+    query += ` WHERE CAST(o.created_at AS DATE) BETWEEN $1 AND $2`;
+    params.push(startDate, endDate);
+  }
+
+  query += ` ORDER BY o.created_at DESC`;
+
+  db.query(query, params, (err, results) => {
     if (err) {
-      console.error('Error fetching today orders:', err);
-      return res.status(500).json([]);
+      console.error('Error fetching report:', err);
+      return res.status(500).json([]); // Aman: mengembalikan array kosong
     }
     res.json(results.rows || []);
   });

@@ -224,7 +224,10 @@ app.post('/api/products', (req, res) => {
 
   const query = 'INSERT INTO products (name, category, price, stock, image) VALUES ($1, $2, $3, $4, $5) RETURNING id';
   db.query(query, [name, category, price, stock, image || ''], (err, result) => {
-    if (err) return res.status(500).json({ error: 'Gagal menambah produk' });
+    if (err) {
+      console.error('Error adding product:', err);
+      return res.status(500).json({ error: 'Gagal menambah produk' });
+    }
     res.json({ message: 'Produk berhasil ditambahkan!', id: result.rows[0].id });
   });
 });
@@ -345,37 +348,38 @@ app.get('/api/orders/today', (req, res) => {
   });
 });
 
-app.get('/api/orders/report', (req, res) => {
-  const { startDate, endDate } = req.query;
+app.get('/api/orders/today', (req, res) => {
+  const today = new Date().toISOString().split('T')[0];
 
-  let query = `
+  const query = `
     SELECT 
       o.id, 
       o.customer_name AS customer, 
+      o.order_type AS type, 
       o.payment_method AS paymentMethod, 
       o.total_amount AS total, 
       o.status, 
       to_char(o.created_at, 'DD Mon YYYY, HH24:MI') AS date,
-      COALESCE(u.name, 'Kasir') AS cashier
+      u.name AS cashier,
+      COALESCE(
+        json_agg(
+          json_build_object('name', oi.product_name, 'qty', oi.qty, 'price', oi.price)
+        ) FILTER (WHERE oi.id IS NOT NULL), '[]'
+      ) AS items
     FROM orders o
     LEFT JOIN users u ON o.user_id = u.id
+    LEFT JOIN order_items oi ON o.id = oi.order_id
+    WHERE CAST(o.created_at AS DATE) = $1
+    GROUP BY o.id, u.name
+    ORDER BY o.created_at DESC
   `;
 
-  const params = [];
-
-  if (startDate && endDate) {
-    query += ` WHERE CAST(o.created_at AS DATE) BETWEEN $1 AND $2`;
-    params.push(startDate, endDate);
-  }
-
-  query += ` ORDER BY o.created_at DESC`;
-
-  db.query(query, params, (err, results) => {
+  db.query(query, [today], (err, results) => {
     if (err) {
-      console.error('Error fetching report:', err);
-      return res.status(500).json({ error: 'Gagal mengambil laporan penjualan' });
+      console.error('Error fetching today orders:', err);
+      return res.status(500).json([]);
     }
-    res.json(results.rows);
+    res.json(results.rows || []);
   });
 });
 

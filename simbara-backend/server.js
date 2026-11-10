@@ -89,11 +89,11 @@ app.post('/api/login', (req, res) => {
 // ==================== FITUR MANAJEMEN USER ====================
 
 app.get('/api/users', (req, res) => {
-  const query = 'SELECT id, name, username, role, created_at FROM users ORDER BY id DESC';
+  const query = 'SELECT id, COALESCE(name, \'\') AS name, COALESCE(username, \'\') AS username, role, created_at FROM users ORDER BY id DESC';
   db.query(query, (err, results) => {
     if (err) {
       console.error('Error fetching users:', err);
-      return res.status(500).json([]); // Kirim array kosong agar frontend tidak crash
+      return res.status(500).json([]);
     }
     res.json(results.rows || []);
   });
@@ -360,10 +360,10 @@ app.get('/api/orders/report', (req, res) => {
   let query = `
     SELECT 
       o.id, 
-      o.customer_name AS customer, 
-      o.payment_method AS paymentMethod, 
-      o.total_amount AS total, 
-      o.status, 
+      COALESCE(o.customer_name, 'Pelanggan Anonim') AS customer, 
+      COALESCE(o.payment_method, '-') AS paymentMethod, 
+      COALESCE(o.total_amount, 0) AS total, 
+      COALESCE(o.status, 'Lunas') AS status, 
       to_char(o.created_at, 'DD Mon YYYY, HH24:MI') AS date,
       COALESCE(u.name, 'Kasir') AS cashier
     FROM orders o
@@ -382,7 +382,7 @@ app.get('/api/orders/report', (req, res) => {
   db.query(query, params, (err, results) => {
     if (err) {
       console.error('Error fetching report:', err);
-      return res.status(500).json([]); // Aman: mengembalikan array kosong
+      return res.status(500).json([]);
     }
     res.json(results.rows || []);
   });
